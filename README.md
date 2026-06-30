@@ -1,4 +1,3 @@
-# hospital-readmission-prediction
 # 🏥 Predicting Hospital Readmission
 
 Predicting which patients are at high risk of being readmitted to hospital within 30 days of discharge, using exploratory data analysis and machine learning.
