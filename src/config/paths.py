@@ -1,4 +1,5 @@
 from pathlib import Path
+
 # Project root directory
 PROJECT_ROOT = Path(__file__).resolve().parents[2]    # parent[2]= AI_Assisted_..., parent[0]= utils
 # Data directories
