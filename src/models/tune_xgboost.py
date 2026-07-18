@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import joblib
 from sklearn.model_selection import (
     RandomizedSearchCV,
     train_test_split,
@@ -70,6 +70,17 @@ def main():
         random_state=42,
         stratify=y,
     )
+
+    # -----------------------------
+    # Save Feature Columns
+    # -----------------------------
+
+    joblib.dump(
+        X_train.columns.tolist(),
+        "saved_models/feature_columns.pkl",
+    )
+
+    print("Feature columns saved successfully.")
 
     # -----------------------------
     # Base Model
