@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import joblib
+import shap
 
 
 MODEL_PATH = Path(
@@ -18,6 +19,7 @@ def predict_patient(
 ):
     """
     Predict hospital readmission risk
+    and generate a local SHAP explanation
     for a single patient.
     """
 
@@ -30,7 +32,7 @@ def predict_patient(
     )
 
     # ---------------------------------
-    # Load feature columns
+    # Load training feature columns
     # ---------------------------------
 
     feature_columns = joblib.load(
@@ -51,10 +53,12 @@ def predict_patient(
     # Keep training column order
     # ---------------------------------
 
-    df = df[feature_columns]
+    df = df[
+        feature_columns
+    ]
 
     # ---------------------------------
-    # Probability Prediction
+    # Prediction
     # ---------------------------------
 
     probability = model.predict_proba(
@@ -62,27 +66,90 @@ def predict_patient(
     )[0][1]
 
     # ---------------------------------
-    # Apply Optimized Threshold
+    # Threshold-based decision
     # ---------------------------------
 
-    prediction = int(
-        probability >= threshold
-    )
+    if probability >= threshold:
 
-    # ---------------------------------
-    # Risk Level
-    # ---------------------------------
-
-    if prediction == 1:
+        prediction = 1
 
         risk = "High Risk"
 
     else:
 
+        prediction = 0
+
         risk = "Low Risk"
 
     # ---------------------------------
-    # Return Results
+    # SHAP Explanation
+    # ---------------------------------
+
+    explainer = shap.TreeExplainer(
+        model
+    )
+
+    shap_values = explainer.shap_values(
+        df
+    )
+
+    # ---------------------------------
+    # Extract SHAP values
+    # for this patient
+    # ---------------------------------
+
+    patient_shap_values = shap_values[0]
+
+    # ---------------------------------
+    # Create explanation DataFrame
+    # ---------------------------------
+
+    explanation = []
+
+    for feature, value, shap_value in zip(
+
+        df.columns,
+
+        df.iloc[0].values,
+
+        patient_shap_values,
+
+    ):
+
+        explanation.append(
+
+            {
+
+                "feature": feature,
+
+                "value": value,
+
+                "shap_value": shap_value,
+
+            }
+
+        )
+
+    # ---------------------------------
+    # Sort by absolute influence
+    # ---------------------------------
+
+    explanation = sorted(
+
+        explanation,
+
+        key=lambda x: abs(
+
+            x["shap_value"]
+
+        ),
+
+        reverse=True,
+
+    )
+
+    # ---------------------------------
+    # Return results
     # ---------------------------------
 
     return {
@@ -90,11 +157,13 @@ def predict_patient(
         "prediction": prediction,
 
         "probability": float(
+
             probability
+
         ),
 
         "risk": risk,
 
-        "threshold": threshold,
+        "shap_explanation": explanation,
 
     }

@@ -1,3 +1,5 @@
+import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from src.dashboard.prepare_input import prepare_input
@@ -423,6 +425,7 @@ def show_prediction_tab():
                 "diabetes_med":
                 diabetes_med,
 
+                # Dummy target column
                 "readmitted":
                 "no",
 
@@ -460,6 +463,12 @@ def show_prediction_tab():
 
             prediction = result["prediction"]
 
+            shap_explanation = (
+
+                result["shap_explanation"]
+
+            )
+
             # =================================================
             # RISK CARD
             # =================================================
@@ -472,25 +481,11 @@ def show_prediction_tab():
 
                 )
 
-                recommendation = (
-
-                    "Early clinical follow-up "
-                    "and closer monitoring are recommended."
-
-                )
-
             else:
 
                 st.success(
 
                     "🟢 LOW READMISSION RISK"
-
-                )
-
-                recommendation = (
-
-                    "Continue routine follow-up care "
-                    "according to the clinical context."
 
                 )
 
@@ -519,17 +514,13 @@ def show_prediction_tab():
                 if prediction == 1:
 
                     prediction_text = (
-
                         "High Risk"
-
                     )
 
                 else:
 
                     prediction_text = (
-
                         "Low Risk"
-
                     )
 
                 st.metric(
@@ -569,7 +560,7 @@ def show_prediction_tab():
             )
 
             # =================================================
-            # RECOMMENDATION
+            # CLINICAL RECOMMENDATION
             # =================================================
 
             st.markdown(
@@ -611,11 +602,263 @@ def show_prediction_tab():
 
                     """
 
+                            )
+            # =================================================
+            # LOCAL SHAP EXPLANATION
+            # =================================================
+
+            st.divider()
+
+            st.markdown(
+                "### 🔍 Why did the model make this prediction?"
+            )
+
+            st.markdown(
+                """
+                SHAP explains how individual features influenced
+                this specific prediction.
+
+                • Positive values increase the estimated readmission risk.
+
+                • Negative values reduce the estimated readmission risk.
+
+                The chart below shows the most influential factors
+                for this individual patient.
+                """
+            )
+
+            # -------------------------------------------------
+            # Prepare SHAP Data
+            # -------------------------------------------------
+
+            shap_df = pd.DataFrame(
+
+                shap_explanation
+
+            )
+
+            # -------------------------------------------------
+            # Select Top Influential Features
+            # -------------------------------------------------
+
+            shap_df["abs_shap"] = (
+
+                shap_df["shap_value"]
+
+                .abs()
+
+            )
+
+            shap_df = (
+
+                shap_df
+
+                .sort_values(
+
+                    by="abs_shap",
+
+                    ascending=False,
+
                 )
 
+                .head(10)
+
+            )
+
+            # -------------------------------------------------
+            # Human-readable Feature Names
+            # -------------------------------------------------
+
+            feature_name_mapping = {
+
+                "n_inpatient":
+                "Previous Inpatient Visits",
+
+                "n_emergency":
+                "Previous Emergency Visits",
+
+                "n_outpatient":
+                "Previous Outpatient Visits",
+
+                "time_in_hospital":
+                "Hospital Stay Duration",
+
+                "n_lab_procedures":
+                "Laboratory Procedures",
+
+                "n_procedures":
+                "Number of Procedures",
+
+                "n_medications":
+                "Number of Medications",
+
+                "age":
+                "Age Group",
+
+                "change":
+                "Medication Change",
+
+                "diabetes_med":
+                "Diabetes Medication",
+
+                "glucose_test_no":
+                "Glucose Test: No",
+
+                "glucose_test_normal":
+                "Glucose Test: Normal",
+
+                "glucose_test_high":
+                "Glucose Test: High",
+
+                "A1Ctest_no":
+                "HbA1c Test: No",
+
+                "A1Ctest_normal":
+                "HbA1c Test: Normal",
+
+                "A1Ctest_high":
+                "HbA1c Test: High",
+
+                "medical_specialty_InternalMedicine":
+                "Internal Medicine",
+
+                "medical_specialty_Emergency/Trauma":
+                "Emergency / Trauma",
+
+                "diag_1_Diabetes":
+                "Primary Diagnosis: Diabetes",
+
+                "diag_1_Circulatory":
+                "Primary Diagnosis: Circulatory",
+
+                "diag_1_Respiratory":
+                "Primary Diagnosis: Respiratory",
+
+                "diag_1_Digestive":
+                "Primary Diagnosis: Digestive",
+
+                "diag_2_Diabetes":
+                "Secondary Diagnosis: Diabetes",
+
+                "diag_3_Missing":
+                "Third Diagnosis: Missing",
+
+            }
+
+            shap_df["display_feature"] = (
+
+                shap_df["feature"]
+
+                .map(feature_name_mapping)
+
+                .fillna(
+
+                    shap_df["feature"]
+
+                )
+
+            )
+
+            # -------------------------------------------------
+            # Add Contribution Direction
+            # -------------------------------------------------
+
+            shap_df["impact"] = shap_df["shap_value"].apply(
+
+                lambda value:
+
+                    "Increases Risk"
+
+                    if value > 0
+
+                    else "Reduces Risk"
+
+            )
+
+            # -------------------------------------------------
+            # Interactive SHAP Chart
+            # -------------------------------------------------
+
+            fig = px.bar(
+
+                shap_df.sort_values(
+
+                    "shap_value"
+
+                ),
+
+                x="shap_value",
+
+                y="display_feature",
+
+                orientation="h",
+
+                color="impact",
+
+                color_discrete_map={
+
+                    "Increases Risk":
+                    "#d62728",
+
+                    "Reduces Risk":
+                    "#2ca02c",
+
+                },
+
+                labels={
+
+                    "shap_value":
+                    "SHAP Contribution",
+
+                    "display_feature":
+                    "Feature",
+
+                    "impact":
+                    "Impact",
+
+                },
+
+                title=(
+
+                    "Top Factors Influencing "
+                    "This Prediction"
+
+                ),
+
+            )
+
+            fig.add_vline(
+
+                x=0,
+
+                line_width=1,
+
+            )
+
+            fig.update_layout(
+
+                height=500,
+
+                showlegend=True,
+
+                yaxis_title="",
+
+                xaxis_title="Impact on Readmission Risk",
+
+            )
+
+            st.plotly_chart(
+
+                fig,
+
+                use_container_width=True,
+
+            )
             # =================================================
             # PATIENT SUMMARY
             # =================================================
+
+            st.divider()
 
             st.markdown(
                 "### 👤 Patient Summary"
