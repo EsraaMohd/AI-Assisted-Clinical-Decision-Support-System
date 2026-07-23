@@ -1,0 +1,5 @@
+Actual,Predicted,Count
+No Readmission,No Readmission,748
+No Readmission,Readmission,1901
+Readmission,No Readmission,362
+Readmission,Readmission,1989

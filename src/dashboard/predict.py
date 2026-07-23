@@ -3,10 +3,6 @@ from pathlib import Path
 import joblib
 
 
-# ---------------------------------
-# Paths
-# ---------------------------------
-
 MODEL_PATH = Path(
     "saved_models/xgboost_tuned.pkl"
 )
@@ -22,7 +18,7 @@ def predict_patient(
 ):
     """
     Predict hospital readmission risk
-    for one patient.
+    for a single patient.
     """
 
     # ---------------------------------
@@ -52,28 +48,32 @@ def predict_patient(
             df[column] = 0
 
     # ---------------------------------
-    # Remove extra columns
+    # Keep training column order
     # ---------------------------------
 
     df = df[feature_columns]
 
     # ---------------------------------
-    # Prediction
+    # Probability Prediction
     # ---------------------------------
-
-    prediction = model.predict(
-        df
-    )[0]
 
     probability = model.predict_proba(
         df
     )[0][1]
 
     # ---------------------------------
+    # Apply Optimized Threshold
+    # ---------------------------------
+
+    prediction = int(
+        probability >= threshold
+    )
+
+    # ---------------------------------
     # Risk Level
     # ---------------------------------
 
-    if probability >= threshold:
+    if prediction == 1:
 
         risk = "High Risk"
 
@@ -87,10 +87,14 @@ def predict_patient(
 
     return {
 
-        "prediction": int(prediction),
+        "prediction": prediction,
 
-        "probability": float(probability),
+        "probability": float(
+            probability
+        ),
 
         "risk": risk,
+
+        "threshold": threshold,
 
     }
