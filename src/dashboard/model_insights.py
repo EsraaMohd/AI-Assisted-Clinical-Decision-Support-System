@@ -653,3 +653,80 @@ def show_model_insights():
             "Feature importance visualization not found."
 
         )
+
+    # =====================================================
+    # SHAP EXPLAINABILITY
+    # =====================================================
+
+    st.divider()
+
+    st.subheader(
+        "🔍 Explainable AI (SHAP)"
+    )
+
+    st.markdown(
+        """
+        SHAP (SHapley Additive exPlanations) helps explain how
+        individual features influence the model's predictions.
+
+        Unlike traditional feature importance, SHAP provides both:
+
+        • Global feature importance across the dataset.
+
+        • Direction of influence on the model output.
+
+        This helps improve the interpretability of the AI model.
+        """
+    )
+
+    shap_plot = Path(
+
+        "images/eda/shap_summary.png"
+
+    )
+
+    if shap_plot.exists():
+
+        st.image(
+
+            str(shap_plot),
+
+            caption=(
+
+                "SHAP Summary Plot - "
+                "Global Feature Impact"
+
+            ),
+
+            use_container_width=True,
+
+        )
+
+        st.info(
+
+            """
+            **How to interpret this plot:**
+
+            • Features appearing higher in the plot generally have
+              a stronger influence on model predictions.
+
+            • Red points represent higher feature values.
+
+            • Blue points represent lower feature values.
+
+            • Points positioned toward the right increase the model's
+              predicted readmission risk.
+
+            • Points positioned toward the left decrease the predicted
+              readmission risk.
+            """
+
+        )
+
+    else:
+
+        st.warning(
+
+            "SHAP analysis image not found."
+
+        )    
